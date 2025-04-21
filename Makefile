@@ -1,5 +1,3 @@
-# MacOS: brew install gtk+3 pkg-config-wrapper 
-
 CC = gcc
 CFLAGS = -Wall -std=c99 `pkg-config --cflags gtk+-3.0`
 LDFLAGS = `pkg-config --libs gtk+-3.0`

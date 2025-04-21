@@ -18,8 +18,34 @@ static int sort_delay = 50;
 static int finished_message_hide_delay = 3;
 
 static GtkWidget *drawing_area;
-static GtkWidget *start_button, *stop_button, *new_array_button, *algorithm_select, *message_label, *overlay;
+static GtkWidget *start_button, *stop_button, *new_array_button;
+static GtkWidget *algorithm_select;
+static GtkWidget *message_label, *overlay;
+static GtkWidget *theme_selector;
 static const char *current_algorithm = "Bubble Sort";
+
+enum ThemeOption {
+    THEME_SYSTEM,
+    THEME_DARK,
+    THEME_LIGHT
+};
+
+const char* theme_option_to_string(enum ThemeOption theme) {
+    switch (theme) {
+        case THEME_DARK: return "Dark";
+        case THEME_LIGHT: return "Light";
+        default: return "System Theme";
+    }
+}
+
+enum ThemeOption string_to_theme_option(const char* str) {
+    if (g_strcmp0(str, "Dark") == 0)
+        return THEME_DARK;
+    else if (g_strcmp0(str, "Light") == 0)
+        return THEME_LIGHT;
+    else
+        return THEME_SYSTEM;
+}
 
 void generate_random_array() {
     array_size = 50 + rand() % 51;
@@ -167,8 +193,59 @@ void on_speed_changed(GtkRange *range, gpointer user_data) {
     sort_delay = (int)gtk_range_get_value(range);
 }
 
+void save_theme_preference(enum ThemeOption theme) {
+    GKeyFile *key_file = g_key_file_new();
+    gchar *config_path = g_build_filename(g_get_user_config_dir(), "SortVisualizer", "settings.ini", NULL);
+
+    g_key_file_set_string(key_file, "Preferences", "Theme", theme_option_to_string(theme));
+
+    g_mkdir_with_parents(g_path_get_dirname(config_path), 0700);
+    gsize length;
+    gchar *data = g_key_file_to_data(key_file, &length, NULL);
+    g_file_set_contents(config_path, data, length, NULL);
+
+    g_free(data);
+    g_key_file_unref(key_file);
+    g_free(config_path);
+}
+
+void on_theme_changed(GtkComboBoxText *combo, gpointer user_data) {
+    const gchar *selected = gtk_combo_box_text_get_active_text(combo);
+    if (!selected) return;
+
+    enum ThemeOption theme = string_to_theme_option(selected);
+    GtkSettings *settings = gtk_settings_get_default();
+
+    if (theme == THEME_DARK) {
+        g_object_set(settings, "gtk-application-prefer-dark-theme", TRUE, NULL);
+    } else {
+        g_object_set(settings, "gtk-application-prefer-dark-theme", FALSE, NULL);
+    }
+
+    save_theme_preference(theme);
+}
+
+enum ThemeOption load_saved_theme() {
+    GKeyFile *key_file = g_key_file_new();
+    gchar *config_path = g_build_filename(g_get_user_config_dir(), "SortVisualizer", "settings.ini", NULL);
+    enum ThemeOption theme = THEME_SYSTEM;
+
+    if (g_key_file_load_from_file(key_file, config_path, G_KEY_FILE_NONE, NULL)) {
+        gchar *theme_str = g_key_file_get_string(key_file, "Preferences", "Theme", NULL);
+        if (theme_str) {
+            theme = string_to_theme_option(theme_str);
+            g_free(theme_str);
+        }
+    }
+
+    g_key_file_unref(key_file);
+    g_free(config_path);
+    return theme;
+}
+
 int main(int argc, char *argv[]) {
     srand(time(NULL));
+
     gtk_init(&argc, &argv);
 
     generate_random_array();
@@ -194,7 +271,7 @@ int main(int argc, char *argv[]) {
     gtk_container_add(GTK_CONTAINER(overlay), drawing_area);
 
     // Mesaj de finalizare
-    message_label = gtk_label_new("✅ S-a finisat sortarea");
+    message_label = gtk_label_new("Finished Sorting");
     gtk_widget_set_name(message_label, "finished_label");
     gtk_widget_set_halign(message_label, GTK_ALIGN_CENTER);
     gtk_widget_set_valign(message_label, GTK_ALIGN_START);
@@ -210,10 +287,17 @@ int main(int argc, char *argv[]) {
     start_button = gtk_button_new_with_label("Start");
     stop_button = gtk_button_new_with_label("Stop");
     new_array_button = gtk_button_new_with_label("New Array");
+    theme_selector = gtk_combo_box_text_new();
 
     gtk_box_pack_start(GTK_BOX(controls), start_button, TRUE, TRUE, 2);
     gtk_box_pack_start(GTK_BOX(controls), stop_button, TRUE, TRUE, 2);
     gtk_box_pack_start(GTK_BOX(controls), new_array_button, TRUE, TRUE, 2);
+    gtk_box_pack_start(GTK_BOX(controls), theme_selector, FALSE, FALSE, 10);
+
+    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(theme_selector), "System Theme");
+    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(theme_selector), "Dark");
+    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(theme_selector), "Light");
+    gtk_combo_box_set_active(GTK_COMBO_BOX(theme_selector), 0);
 
     // ComboBox pentru alegerea algoritmului
     algorithm_select = gtk_combo_box_text_new();
@@ -236,6 +320,7 @@ int main(int argc, char *argv[]) {
     g_signal_connect(new_array_button, "clicked", G_CALLBACK(on_new_array_clicked), NULL);
     g_signal_connect(algorithm_select, "changed", G_CALLBACK(on_algorithm_changed), NULL);
     g_signal_connect(speed_scale, "value-changed", G_CALLBACK(on_speed_changed), NULL);
+    g_signal_connect(theme_selector, "changed", G_CALLBACK(on_theme_changed), NULL);
 
     // CSS pentru mesaj
     GtkCssProvider *provider = gtk_css_provider_new();
@@ -246,9 +331,27 @@ int main(int argc, char *argv[]) {
         gdk_screen_get_default(),
         GTK_STYLE_PROVIDER(provider),
         GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-
+    
     gtk_widget_show_all(window);
     gtk_widget_hide(message_label);
+
+    // Theme should be set after widgets are shown
+    enum ThemeOption saved_theme = load_saved_theme();
+    GtkSettings *settings = gtk_settings_get_default();
+    if (G_IS_OBJECT(settings)) {
+        if (saved_theme == THEME_DARK) {
+            g_object_set(settings, "gtk-application-prefer-dark-theme", TRUE, NULL);
+        } else {
+            g_object_set(settings, "gtk-application-prefer-dark-theme", FALSE, NULL);
+        }
+    }
+
+    switch (saved_theme) {
+        case THEME_DARK: gtk_combo_box_set_active(GTK_COMBO_BOX(theme_selector), 1); break;
+        case THEME_LIGHT: gtk_combo_box_set_active(GTK_COMBO_BOX(theme_selector), 2); break;
+        default: gtk_combo_box_set_active(GTK_COMBO_BOX(theme_selector), 0); break;
+    }
+    
     gtk_main();
 
     return EXIT_SUCCESS;
