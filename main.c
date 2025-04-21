@@ -1,7 +1,7 @@
 // SortVisualizer - GTK3 GUI modulară pentru algoritmi de sortare în C
 // Compilează cu: gcc -o sortviz main.c `pkg-config --cflags --libs gtk+-3.0`
 
-#include <gtk-3.0>
+#include <gtk-3.0/gtk/gtk.h>
 #include <stdlib.h>
 #include <time.h>
 
