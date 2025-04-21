@@ -1,46 +1,24 @@
-// SortVisualizer - Aplicație GUI modulară pentru algoritmi de sortare
-// Folosește SDL2 pentru vizualizare grafică
+// SortVisualizer - GTK3 GUI modulară pentru algoritmi de sortare în C
+// Compilează cu: gcc -o sortviz main.c `pkg-config --cflags --libs gtk+-3.0`
 
-#include <SDL2/SDL.h>
-#include <stdio.h>
+#include <gtk-3.0>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <time.h>
 
-#define WINDOW_WIDTH 800
-#define WINDOW_HEIGHT 600
 #define ARRAY_SIZE 100
 
-int array[ARRAY_SIZE];
-int current_index = 0;
-bool sorting = false;
+static int array[ARRAY_SIZE];
+static int current_index = 0;
+static gboolean sorting = FALSE;
+static GtkWidget *drawing_area;
 
 void generate_random_array() {
     for (int i = 0; i < ARRAY_SIZE; i++) {
-        array[i] = rand() % WINDOW_HEIGHT;
+        array[i] = rand() % 100;
     }
 }
 
-void render_array(SDL_Renderer *renderer) {
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    SDL_RenderClear(renderer);
-
-    int bar_width = WINDOW_WIDTH / ARRAY_SIZE;
-    for (int i = 0; i < ARRAY_SIZE; i++) {
-        SDL_Rect bar = {
-            .x = i * bar_width,
-            .y = WINDOW_HEIGHT - array[i],
-            .w = bar_width - 1,
-            .h = array[i]
-        };
-        SDL_SetRenderDrawColor(renderer, (i == current_index) ? 255 : 100, 255, 100, 255);
-        SDL_RenderFillRect(renderer, &bar);
-    }
-
-    SDL_RenderPresent(renderer);
-}
-
-bool bubble_sort_step() {
+gboolean bubble_sort_step(GtkWidget *widget) {
     static int i = 0, j = 0;
     if (i < ARRAY_SIZE - 1) {
         if (j < ARRAY_SIZE - i - 1) {
@@ -51,69 +29,86 @@ bool bubble_sort_step() {
             }
             current_index = j;
             j++;
-            return true;
+            gtk_widget_queue_draw(widget);
+            return TRUE;
         } else {
             j = 0;
             i++;
-            return true;
+            return TRUE;
         }
     }
-    return false;
+    sorting = FALSE;
+    return FALSE;
+}
+
+void on_draw(GtkWidget *widget, cairo_t *cr, gpointer data) {
+    GtkAllocation allocation;
+    gtk_widget_get_allocation(widget, &allocation);
+
+    int width = allocation.width;
+    int height = allocation.height;
+    int bar_width = width / ARRAY_SIZE;
+
+    for (int i = 0; i < ARRAY_SIZE; i++) {
+        double x = i * bar_width;
+        double bar_height = (array[i] / 100.0) * height;
+
+        if (i == current_index)
+            cairo_set_source_rgb(cr, 1, 0, 0);  // red
+        else
+            cairo_set_source_rgb(cr, 0.2, 0.8, 0.2);  // green
+
+        cairo_rectangle(cr, x, height - bar_height, bar_width - 1, bar_height);
+        cairo_fill(cr);
+    }
+}
+
+void on_start_sort(GtkButton *button, gpointer user_data) {
+    if (!sorting) {
+        sorting = TRUE;
+        g_timeout_add(30, (GSourceFunc)bubble_sort_step, drawing_area);
+    }
+}
+
+void on_reset(GtkButton *button, gpointer user_data) {
+    generate_random_array();
+    current_index = 0;
+    sorting = FALSE;
+    gtk_widget_queue_draw(drawing_area);
 }
 
 int main(int argc, char *argv[]) {
     srand(time(NULL));
     generate_random_array();
 
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        fprintf(stderr, "SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
-        return 1;
-    }
+    gtk_init(&argc, &argv);
 
-    SDL_Window *window = SDL_CreateWindow("SortVisualizer", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                                          WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_SHOWN);
-    if (!window) {
-        fprintf(stderr, "Window could not be created! SDL_Error: %s\n", SDL_GetError());
-        SDL_Quit();
-        return 1;
-    }
+    GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_title(GTK_WINDOW(window), "SortVisualizer GTK");
+    gtk_window_set_default_size(GTK_WINDOW(window), 800, 600);
+    g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
 
-    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-    if (!renderer) {
-        fprintf(stderr, "Renderer could not be created! SDL_Error: %s\n", SDL_GetError());
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        return 1;
-    }
+    GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+    gtk_container_add(GTK_CONTAINER(window), vbox);
 
-    bool running = true;
-    SDL_Event event;
+    GtkWidget *button_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+    GtkWidget *start_btn = gtk_button_new_with_label("Start Sort");
+    GtkWidget *reset_btn = gtk_button_new_with_label("Reset Array");
+    gtk_box_pack_start(GTK_BOX(button_box), start_btn, FALSE, FALSE, 5);
+    gtk_box_pack_start(GTK_BOX(button_box), reset_btn, FALSE, FALSE, 5);
 
-    while (running) {
-        while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_QUIT) {
-                running = false;
-            } else if (event.type == SDL_KEYDOWN) {
-                if (event.key.keysym.sym == SDLK_SPACE) {
-                    sorting = true;
-                } else if (event.key.keysym.sym == SDLK_r) {
-                    generate_random_array();
-                    sorting = false;
-                    current_index = 0;
-                }
-            }
-        }
+    drawing_area = gtk_drawing_area_new();
+    gtk_widget_set_vexpand(drawing_area, TRUE);
+    gtk_widget_set_hexpand(drawing_area, TRUE);
+    gtk_box_pack_start(GTK_BOX(vbox), drawing_area, TRUE, TRUE, 5);
+    gtk_box_pack_start(GTK_BOX(vbox), button_box, FALSE, FALSE, 5);
 
-        if (sorting) {
-            sorting = bubble_sort_step();
-        }
+    g_signal_connect(start_btn, "clicked", G_CALLBACK(on_start_sort), NULL);
+    g_signal_connect(reset_btn, "clicked", G_CALLBACK(on_reset), NULL);
+    g_signal_connect(drawing_area, "draw", G_CALLBACK(on_draw), NULL);
 
-        render_array(renderer);
-        SDL_Delay(10);
-    }
+    gtk_widget_show_all(window);
+    gtk_main();
 
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
     return 0;
 }
