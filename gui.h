@@ -23,5 +23,8 @@ void save_theme_preference(ThemeOption theme);
 void on_theme_changed(GtkComboBoxText *combo, gpointer user_data);
 ThemeOption load_saved_theme();
 gboolean on_key_press(GtkWidget *widget, GdkEventKey *event, gpointer user_data);
+typedef gboolean (*sort_step_func)(gpointer data);
+sort_step_func get_sort_step_function(const gchar *algorithm_name);
+void start_sorting(const gchar *current_algorithm);
 
 #endif

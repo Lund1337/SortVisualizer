@@ -88,6 +88,15 @@ int main(int argc, char *argv[]) {
     algorithm_select = gtk_combo_box_text_new();
     gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(algorithm_select), "Bubble Sort");
     gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(algorithm_select), "Selection Sort");
+    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(algorithm_select), "Insert Sort");
+    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(algorithm_select), "Merge Sort");
+    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(algorithm_select), "Quick Sort");
+    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(algorithm_select), "Heap Sort");
+    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(algorithm_select), "Counting Sort");
+    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(algorithm_select), "Radix Sort");
+    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(algorithm_select), "Bucket Sort");
+    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(algorithm_select), "Shell Sort");
+    
     gtk_combo_box_set_active(GTK_COMBO_BOX(algorithm_select), 0);
     gtk_box_pack_start(GTK_BOX(controls), algorithm_select, TRUE, TRUE, 2);
 

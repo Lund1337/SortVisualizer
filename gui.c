@@ -1,6 +1,5 @@
 #include "helper.h"
 #include "gui.h"
-
 typedef struct {
     double r, g, b;
 } RGB;
@@ -97,10 +96,42 @@ void on_start_clicked(GtkWidget *widget, gpointer user_data) {
     gtk_widget_set_sensitive(new_array_button, FALSE);
     gtk_widget_hide(message_label);
 
-    if (g_strcmp0(current_algorithm, "Bubble Sort") == 0) {
-        g_timeout_add(sort_delay, bubble_sort_step, NULL);
-    } else if (g_strcmp0(current_algorithm, "Selection Sort") == 0) {
-        g_timeout_add(sort_delay, selection_sort_step, NULL);
+    reset_sort();
+    start_sorting(current_algorithm);
+}
+
+sort_step_func get_sort_step_function(const gchar *algorithm_name) {
+    if (g_strcmp0(algorithm_name, "Bubble Sort") == 0) {
+        return bubble_sort_step;
+    } else if (g_strcmp0(algorithm_name, "Selection Sort") == 0) {
+        return selection_sort_step;
+    } else if (g_strcmp0(algorithm_name, "Insert Sort") == 0) {
+        return insert_sort_step;
+    } else if (g_strcmp0(algorithm_name, "Merge Sort") == 0) {
+        return merge_sort_step;
+    } else if (g_strcmp0(algorithm_name, "Quick Sort") == 0) {
+        return quick_sort_step;
+    } else if (g_strcmp0(algorithm_name, "Heap Sort") == 0) {
+        return heap_sort_step;
+    } else if (g_strcmp0(algorithm_name, "Counting Sort") == 0) {
+        return couting_sort_step;
+    } else if (g_strcmp0(algorithm_name, "Radix Sort") == 0) {
+        return radix_sort_step;
+    } else if (g_strcmp0(algorithm_name, "Bucket Sort") == 0) {
+        return bucket_sort_step;
+    } else if (g_strcmp0(algorithm_name, "Shell Sort") == 0) {
+        return shell_sort_step;
+    } else {
+        g_warning("Unknown sorting algorithm: %s", algorithm_name);
+        return NULL;
+    }
+}
+
+void start_sorting(const gchar *current_algorithm) {
+    sort_step_func sort_step = get_sort_step_function(current_algorithm);
+
+    if (sort_step != NULL) {
+        g_timeout_add(sort_delay, sort_step, NULL);
     }
 }
 
