@@ -16,6 +16,7 @@
 #define MAX_ARRAY_SIZE 100
 #define MIN_VALUE -100
 #define MAX_VALUE 100
+#define DEFAULT_SORT_DELAY 1
 
 // Shared variables
 extern GtkWidget *drawing_area;

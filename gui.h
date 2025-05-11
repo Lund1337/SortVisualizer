@@ -3,6 +3,9 @@
 
 #include "helper.h"
 
+#define DEFAULT_WIDTH 1100
+#define DEFAULT_HEIGHT 800
+
 typedef enum {
     THEME_LIGHT,
     THEME_DARK,

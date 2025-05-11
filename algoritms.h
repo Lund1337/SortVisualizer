@@ -7,6 +7,11 @@
 
 #define BUCKETS 10
 
+typedef struct {
+    int left;
+    int right;
+} QuickFrame;
+
 gboolean bubble_sort_step(gpointer data); 
 gboolean selection_sort_step(gpointer data);
 gboolean insert_sort_step(gpointer data);
@@ -20,7 +25,7 @@ gboolean shell_sort_step(gpointer data);
 
 void push_quick(int left, int right);
 gboolean pop_quick(int *left, int *right);
-gboolean heapify_single_step(int n);
+gboolean heapify_single_step_managed(int n_heap_bound);
 void reset_merge_sort();
 void reset_quick_sort();
 void reset_heap_sort();

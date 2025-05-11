@@ -9,7 +9,7 @@ bool *sorted_flags = NULL;
 gboolean sorting = FALSE;
 gboolean stop_requested = FALSE;
 
-int sort_delay = 50;
+int sort_delay = DEFAULT_SORT_DELAY;
 int finished_message_hide_delay = 3;
 
 GtkWidget *drawing_area = NULL;
@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
     // Fereastra principală
     GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     gtk_window_set_title(GTK_WINDOW(window), "Sorting Visualizer");
-    gtk_window_set_default_size(GTK_WINDOW(window), 800, 600);
+    gtk_window_set_default_size(GTK_WINDOW(window), DEFAULT_WIDTH, DEFAULT_HEIGHT);
     gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
     gtk_window_set_keep_above(GTK_WINDOW(window), TRUE);
     gtk_window_present(GTK_WINDOW(window));

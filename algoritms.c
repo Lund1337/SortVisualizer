@@ -1,9 +1,14 @@
 #include "helper.h"
 #include "algoritms.h"
-typedef struct {
-    int left;
-    int right;
-} QuickFrame;
+
+/*
+______       _     _     _        _____            _   
+| ___ \     | |   | |   | |      /  ___|          | |  
+| |_/ /_   _| |__ | |__ | | ___  \ `--.  ___  _ __| |_ 
+| ___ \ | | | '_ \| '_ \| |/ _ \  `--. \/ _ \| '__| __|
+| |_/ / |_| | |_) | |_) | |  __/ /\__/ / (_) | |  | |_ 
+\____/ \__,_|_.__/|_.__/|_|\___| \____/ \___/|_|   \__|
+*/
 
 gboolean bubble_sort_step(gpointer data) {
     static int i = 0, j = 0;
@@ -45,6 +50,15 @@ gboolean bubble_sort_step(gpointer data) {
         return TRUE;
     }
 }
+
+/*
+ _____      _           _   _               _____            _   
+/  ___|    | |         | | (_)             /  ___|          | |  
+\ `--.  ___| | ___  ___| |_ _  ___  _ __   \ `--.  ___  _ __| |_ 
+ `--. \/ _ \ |/ _ \/ __| __| |/ _ \| '_ \   `--. \/ _ \| '__| __|
+/\__/ /  __/ |  __/ (__| |_| | (_) | | | | /\__/ / (_) | |  | |_ 
+\____/ \___|_|\___|\___|\__|_|\___/|_| |_| \____/ \___/|_|   \__|
+*/
 
 gboolean selection_sort_step(gpointer data) {
     static int i = 0, j = 1, min_index = 0;
@@ -93,6 +107,15 @@ gboolean selection_sort_step(gpointer data) {
     }
 }
 
+/*
+ _____                    _   _               _____            _   
+|_   _|                  | | (_)             /  ___|          | |  
+  | | _ __  ___  ___ _ __| |_ _  ___  _ __   \ `--.  ___  _ __| |_ 
+  | || '_ \/ __|/ _ \ '__| __| |/ _ \| '_ \   `--. \/ _ \| '__| __|
+ _| || | | \__ \  __/ |  | |_| | (_) | | | | /\__/ / (_) | |  | |_ 
+ \___/_| |_|___/\___|_|   \__|_|\___/|_| |_| \____/ \___/|_|   \__|
+*/
+
 gboolean insert_sort_step(gpointer data) {
     static int i = 1, j = 0;
     static int key;
@@ -132,6 +155,17 @@ gboolean insert_sort_step(gpointer data) {
         return TRUE;
     }
 }
+
+/*
+___  ___                      _____            _   
+|  \/  |                     /  ___|          | |  
+| .  . | ___ _ __ __ _  ___  \ `--.  ___  _ __| |_ 
+| |\/| |/ _ \ '__/ _` |/ _ \  `--. \/ _ \| '__| __|
+| |  | |  __/ | | (_| |  __/ /\__/ / (_) | |  | |_ 
+\_|  |_/\___|_|  \__, |\___| \____/ \___/|_|   \__|
+                  __/ |                            
+                 |___/                             
+*/
 
 static int merge_width = 1;
 static int merge_left = 0, merge_right = 0, merge_mid = 0;
@@ -204,6 +238,15 @@ void reset_merge_sort() {
     // Redraw the visualization
     gtk_widget_queue_draw(drawing_area);
 }
+
+/*
+ _____       _      _      _____            _   
+|  _  |     (_)    | |    /  ___|          | |  
+| | | |_   _ _  ___| | __ \ `--.  ___  _ __| |_ 
+| | | | | | | |/ __| |/ /  `--. \/ _ \| '__| __|
+\ \/' / |_| | | (__|   <  /\__/ / (_) | |  | |_ 
+ \_/\_\\__,_|_|\___|_|\_\ \____/ \___/|_|   \__|
+*/
 
 static QuickFrame quick_stack[MAX_STACK_SIZE];
 static int quick_stack_top = -1;
@@ -299,106 +342,189 @@ void reset_quick_sort() {
     gtk_widget_queue_draw(drawing_area);
 }
 
-static gboolean heap_phase = TRUE;  // TRUE = building heap, FALSE = sorting
-static int heap_build_index = 0;
+/*
+ _   _                    _____            _   
+| | | |                  /  ___|          | |  
+| |_| | ___  __ _ _ __   \ `--.  ___  _ __| |_ 
+|  _  |/ _ \/ _` | '_ \   `--. \/ _ \| '__| __|
+| | | |  __/ (_| | |_) | /\__/ / (_) | |  | |_ 
+\_| |_/\___|\__,_| .__/  \____/ \___/|_|   \__|
+                 | |                           
+                 |_|                           
+*/
 
-static int heap_size = 0;
-static int heap_i = -1;
+static gboolean heap_phase = TRUE;
+static int heap_build_index = 0; // Controls the outer loop of the build phase: (array_size/2)-1 down to 0
+static int heap_size = 0;        // Current heap size in the sorting phase
+static int heap_i = -1;          // Index used and modified by heapify_single_step_managed.
+                                 // Represents the current node in a sift-down path.
 
-gboolean heap_sort_step(gpointer data) {
-    if (stop_requested) {
-        for (int k = 0; k < array_size; ++k)
-            sorted_flags[k] = true;
-        
-        gtk_widget_queue_draw(drawing_area);
-        show_finished_message();
-        return FALSE;
+// True if we are in the middle of a multi-step sift-down for a single root element.
+static gboolean sift_operation_active = FALSE;
+
+gboolean heapify_single_step_managed(int n_heap_bound) {
+    // This function directly uses and MODIFIES the global 'heap_i'
+    // n_heap_bound is the current effective size of the heap (either array_size or the reduced heap_size)
+
+    // Basic bounds check for heap_i, though logic in heap_sort_step should prevent invalid values.
+    if (heap_i < 0 || heap_i >= n_heap_bound) {
+        return FALSE; // Should not proceed if heap_i is out of bounds for the current operation
     }
 
-    // Phase 1: Build the heap from array (bottom-up)
-    if (heap_phase) {
-        if (heap_build_index < 0) {
-            heap_phase = FALSE;
-            heap_size = array_size;
-            heap_i = 0;
-            return TRUE;
-        }
-
-        heap_i = heap_build_index;
-        heapify_single_step(array_size);
-        heap_build_index--;
-
-        gtk_widget_queue_draw(drawing_area);
-        return TRUE;
-    }
-
-    // Phase 2: Extract max and re-heapify
-    if (heap_i < heap_size) {
-        gboolean still_heapifying = heapify_single_step(heap_size);
-        gtk_widget_queue_draw(drawing_area);
-        if (still_heapifying)
-            return TRUE;
-    }
-
-    if (heap_size <= 1) {
-        sorted_flags[0] = true;
-        gtk_widget_queue_draw(drawing_area);
-        show_finished_message();
-        return FALSE;
-    }
-
-    // Swap max (root) with last unsorted element
-    int temp = array[0];
-    array[0] = array[heap_size - 1];
-    array[heap_size - 1] = temp;
-
-    sorted_flags[heap_size - 1] = true;
-    heap_size--;
-
-    heap_i = 0; // restart sift-down from root
-    gtk_widget_queue_draw(drawing_area);
-    return TRUE;
-}
-
-gboolean heapify_single_step(int n) {
     int left = 2 * heap_i + 1;
     int right = 2 * heap_i + 2;
     int largest = heap_i;
 
-    if (left < n && array[left] > array[largest])
+    if (left < n_heap_bound && array[left] > array[largest]) {
         largest = left;
-    if (right < n && array[right] > array[largest])
+    }
+    if (right < n_heap_bound && array[right] > array[largest]) {
         largest = right;
+    }
 
-    current_index = heap_i;
-    compare_index = largest;
+    current_index = heap_i;     // For visualization
+    compare_index = largest;    // For visualization
 
     if (largest != heap_i) {
-        // Swap and continue heapifying in next frame
+        // Swap elements
         int temp = array[heap_i];
         array[heap_i] = array[largest];
         array[largest] = temp;
 
-        heap_i = largest;
-        return TRUE;  // Continue in next step
+        heap_i = largest; // IMPORTANT: Update global heap_i to continue sifting from the child's position
+        return TRUE;      // Indicates that a swap occurred and sifting should continue for this element
     }
 
-    heap_i = n; // Done with this heapify pass
+    // Element at heap_i is now in its correct heap position relative to its direct children.
+    // The current sift-down path initiated for an ancestor (or this node itself) is complete from this node downwards.
     return FALSE;
 }
 
-void reset_heap_sort() {
-    heap_size = 0;
-    heap_phase = TRUE;
-    heap_build_index = array_size / 2 - 1;
-    heap_i = -1;
-    current_index = compare_index = -1;
+gboolean heap_sort_step(gpointer data) {
+    if (stop_requested) {
+        for (int k = 0; k < array_size; ++k) {
+            sorted_flags[k] = true;
+        }
+        gtk_widget_queue_draw(drawing_area);
+        show_finished_message();
+        return FALSE;
+    }
 
-    for (int k = 0; k < array_size; ++k)
+    if (heap_phase) { // Build Heap Phase
+        if (!sift_operation_active) {
+            // Not currently sifting, so decide if we need to start sifting a new node for build-heap
+            if (heap_build_index >= 0) {
+                heap_i = heap_build_index; // Set the root of the subtree to start sifting
+                sift_operation_active = TRUE;
+                // The actual sifting will happen in the block below or in the next call to heap_sort_step
+            } else {
+                // Build heap phase is complete
+                heap_phase = FALSE;
+                heap_size = array_size;         // Initialize heap_size for sorting phase
+                sift_operation_active = FALSE;  // Reset for sorting phase
+                // heap_i will be set to 0 by the sorting phase logic when it starts a sift
+                // gtk_widget_queue_draw(drawing_area); // Optional: draw after build heap is fully done.
+                return TRUE; // Continue to sorting phase logic in the next step
+            }
+        }
+
+        // This 'if' block can be entered in the same call if sift_operation_active was just set to TRUE above.
+        if (sift_operation_active) {
+            // Continue sifting the current element (which started at heap_build_index, current node is heap_i)
+            gboolean did_sift = heapify_single_step_managed(array_size); // Use full array_size for build-heap
+            gtk_widget_queue_draw(drawing_area);
+
+            if (did_sift) {
+                // Sifting continues for the current heap_i (which has been updated by heapify_single_step_managed)
+                return TRUE;
+            } else {
+                // Sifting for the element that started at heap_build_index (and was processed via heap_i) is complete
+                sift_operation_active = FALSE;
+                heap_build_index--; // Move to the next node to heapify in the build phase
+                return TRUE;
+            }
+        }
+    } else { // Sorting Phase
+        if (heap_size <= 1) {
+            if (heap_size == 1) { // Ensure the last element is marked sorted
+                sorted_flags[0] = true;
+            }
+            // gtk_widget_queue_draw(drawing_area); // Draw the final sorted state if needed before message
+            show_finished_message();
+            return FALSE; // Sorting is complete
+        }
+
+        if (!sift_operation_active) {
+            // Not currently sifting, so perform swap and then prepare for the next sift-down.
+            // Swap the root (maximum element) with the last element of the current heap
+            int temp = array[0];
+            array[0] = array[heap_size - 1];
+            array[heap_size - 1] = temp;
+            sorted_flags[heap_size - 1] = true; // Mark the swapped element as sorted
+            heap_size--; // Reduce the heap size
+
+            // Check if sorting is complete after this swap and reduction
+            if (heap_size <= 1) {
+                if (heap_size == 1) {
+                    sorted_flags[0] = true;
+                }
+                gtk_widget_queue_draw(drawing_area); // Show the swap and potential final element
+                show_finished_message();
+                return FALSE;
+            }
+
+            heap_i = 0; // Set heap_i to the root to start sifting for the reduced heap
+            sift_operation_active = TRUE;
+            gtk_widget_queue_draw(drawing_area); // Show the state after the swap
+            return TRUE; // Next step will start sifting this new root
+        }
+
+        // This 'if' block can be entered in the same call if sift_operation_active was just set to TRUE above.
+        if (sift_operation_active) {
+            // Continue sifting the root element (current node is heap_i, which started at 0)
+            gboolean did_sift = heapify_single_step_managed(heap_size); // Use current (reduced) heap_size
+            gtk_widget_queue_draw(drawing_area);
+
+            if (did_sift) {
+                // Sifting continues for the current heap_i (which has been updated)
+                return TRUE;
+            } else {
+                // Sifting for the root (which started at 0) is complete
+                sift_operation_active = FALSE;
+                // Ready for the next swap in the sort phase (will be handled in the next call to heap_sort_step)
+                return TRUE;
+            }
+        }
+    }
+    return TRUE;
+}
+
+void reset_heap_sort() {
+    heap_phase = TRUE;
+    // Start building the heap from the last non-leaf node
+    heap_build_index = (array_size / 2) - 1;
+    heap_size = 0; // Will be set to array_size when sort phase begins
+    heap_i = -1;   // Indicates heap_i is not yet set for an operation
+    sift_operation_active = FALSE;
+
+    current_index = -1; // Reset visualization index
+    compare_index = -1; // Reset visualization index
+
+    for (int k = 0; k < array_size; ++k) {
         sorted_flags[k] = false;
+    }
 
     gtk_widget_queue_draw(drawing_area);
 }
+
+/*
+ _____                   _     _____            _   
+/  __ \                 | |   /  ___|          | |  
+| /  \/ ___  _   _ _ __ | |_  \ `--.  ___  _ __| |_ 
+| |    / _ \| | | | '_ \| __|  `--. \/ _ \| '__| __|
+| \__/\ (_) | |_| | | | | |_  /\__/ / (_) | |  | |_ 
+ \____/\___/ \__,_|_| |_|\__| \____/ \___/|_|   \__|
+*/
 
 static int count[VALUE_RANGE];
 static int current_value = MIN_VALUE;
@@ -462,10 +588,19 @@ void reset_counting_sort() {
     gtk_widget_queue_draw(drawing_area);
 }
 
+/*
+______          _ _        _____            _   
+| ___ \        | (_)      /  ___|          | |  
+| |_/ /__ _  __| |___  __ \ `--.  ___  _ __| |_ 
+|    // _` |/ _` | \ \/ /  `--. \/ _ \| '__| __|
+| |\ \ (_| | (_| | |>  <  /\__/ / (_) | |  | |_ 
+\_| \_\__,_|\__,_|_/_/\_\ \____/ \___/|_|   \__|
+*/
+
 static int exp = 1;
 
 gboolean radix_sort_step(gpointer data) {
-    if (stop_requested || exp > 1000) {  // Arbitrary limit for digits
+    if (stop_requested || exp > 1000000000) {
         for (int k = 0; k < array_size; ++k)
             sorted_flags[k] = true;
         gtk_widget_queue_draw(drawing_area);
@@ -473,73 +608,41 @@ gboolean radix_sort_step(gpointer data) {
         return FALSE;
     }
 
-    int output[array_size], count[10] = {0};
-    int output_neg[array_size]; // To store sorted negative values
-    int count_neg[10] = {0};  // To count digits for negative numbers
+    int* output = (int*)malloc(array_size * sizeof(int));
+    int count[20] = {0}; // Use count array of size 20 to handle negative numbers
 
-    // Step 1: Separate positive and negative values
-    int pos_index = 0;
-    int neg_index = 0;
-
-    for (int i = 0; i < array_size; i++) {
-        if (array[i] < 0) {
-            neg_index++;
-        } else {
-            pos_index++;
-        }
+    if (!output) {
+        fprintf(stderr, "Memory allocation failed in radix_sort_step\n");
+        return FALSE;
     }
 
-    // Step 2: Count occurrences of digits based on current 'exp'
+    // 1. Count occurrences of digits (shift negative digits to positive indices in count)
     for (int i = 0; i < array_size; i++) {
-        if (array[i] >= 0) {
-            // For positive values, use the absolute value
-            int digit = (array[i] / exp) % 10;
-            count[digit]++;
-        } else {
-            // For negative values, use the absolute value and store them separately
-            int digit = (abs(array[i]) / exp) % 10;
-            count_neg[digit]++;
-        }
+        int digit = (array[i] / exp) % 10;
+        count[digit + 10]++; // Shift by 10 to handle negative digits
     }
 
-    // Step 3: Update count to hold the actual positions
-    for (int i = 1; i < 10; i++) {
+    // 2. Compute cumulative counts
+    for (int i = 1; i < 20; i++)
         count[i] += count[i - 1];
-        count_neg[i] += count_neg[i - 1];
-    }
 
-    // Step 4: Sort negative values (ascending)
-    for (int i = 0; i < array_size; i++) {
-    if (array[i] < 0) {
-        int digit = ((-array[i]) / exp) % 10;
-        output_neg[count_neg[digit] - 1] = array[i];
-        count_neg[digit]--;
-        }
-    }
-    
-    // Step 5: Sort positive values (ascending)
+    // 3. Build the output array (stable sorting)
     for (int i = array_size - 1; i >= 0; i--) {
-        if (array[i] >= 0) {
-            int digit = (array[i] / exp) % 10;
-            output[count[digit] - 1] = array[i];
-            count[digit]--;
-        }
+        int digit = (array[i] / exp) % 10;
+        output[count[digit + 10] - 1] = array[i]; // Shift by 10 again
+        count[digit + 10]--;
     }
 
-    // Step 6: Merge sorted negative and positive arrays
-    int radix_reset_index = 0;
-    for (int i = neg_index; i > 0; i--) {
-        array[radix_reset_index++] = output_neg[i];  // Place sorted negatives first
-    }
-    for (int i = 0; i < pos_index; i++) {
-        array[radix_reset_index++] = output[i];      // Place sorted positives after
-    }
+    // 4. Copy the output back to the original array
+    for (int i = 0; i < array_size; i++)
+        array[i] = output[i];
 
-    // Step 7: Move to the next digit (exp * 10)
+    // 5. Increment the exponent
     exp *= 10;
 
-    // Trigger redraw
+    // 6. Trigger redraw and free memory
     gtk_widget_queue_draw(drawing_area);
+    free(output);
     return TRUE;
 }
 
@@ -549,6 +652,16 @@ void reset_radix_sort() {
         sorted_flags[k] = false;
     gtk_widget_queue_draw(drawing_area);
 }
+
+
+/*
+______            _        _     _____            _   
+| ___ \          | |      | |   /  ___|          | |  
+| |_/ /_   _  ___| | _____| |_  \ `--.  ___  _ __| |_ 
+| ___ \ | | |/ __| |/ / _ \ __|  `--. \/ _ \| '__| __|
+| |_/ / |_| | (__|   <  __/ |_  /\__/ / (_) | |  | |_ 
+\____/ \__,_|\___|_|\_\___|\__| \____/ \___/|_|   \__|
+*/
 
 static int bucket_index = 0;
 static GArray* buckets[BUCKETS];
@@ -626,6 +739,15 @@ gboolean bucket_sort_step(gpointer data) {
     return TRUE;
 }
 
+/*
+ _____ _          _ _   _____            _   
+/  ___| |        | | | /  ___|          | |  
+\ `--.| |__   ___| | | \ `--.  ___  _ __| |_ 
+ `--. \ '_ \ / _ \ | |  `--. \/ _ \| '__| __|
+/\__/ / | | |  __/ | | /\__/ / (_) | |  | |_ 
+\____/|_| |_|\___|_|_| \____/ \___/|_|   \__|
+*/
+
 static int gap = 0, i = 0, j = 0;
 static int temp;
 static gboolean inserting = FALSE;
@@ -696,6 +818,7 @@ void reset_shell_sort() {
     gtk_widget_queue_draw(drawing_area);
 }
 
+/* Helper Funt to reset everything */
 void reset_sort() {
     reset_merge_sort();
     reset_quick_sort();
