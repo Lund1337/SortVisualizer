@@ -114,7 +114,7 @@ sort_step_func get_sort_step_function(const gchar *algorithm_name) {
     } else if (g_strcmp0(algorithm_name, "Heap Sort") == 0) {
         return heap_sort_step;
     } else if (g_strcmp0(algorithm_name, "Counting Sort") == 0) {
-        return couting_sort_step;
+        return counting_sort_step;
     } else if (g_strcmp0(algorithm_name, "Radix Sort") == 0) {
         return radix_sort_step;
     } else if (g_strcmp0(algorithm_name, "Bucket Sort") == 0) {

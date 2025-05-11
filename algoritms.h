@@ -1,26 +1,26 @@
 #ifndef ALGORITMS_H
 #define ALGORITMS_H
 
-#define MAX_STACK_SIZE 100
-
-typedef struct {
-    int left;
-    int right;
-} StackItem;
+#define BUCKETS 100
 
 gboolean bubble_sort_step(gpointer data); 
 gboolean selection_sort_step(gpointer data);
 gboolean insert_sort_step(gpointer data);
 gboolean merge_sort_step(gpointer data);
-void reset_merge_sort();
 gboolean quick_sort_step(gpointer data);
-void reset_quick_sort();
 gboolean heap_sort_step(gpointer data);
-gboolean couting_sort_step(gpointer data);
+gboolean counting_sort_step(gpointer data);
 gboolean radix_sort_step(gpointer data);
 gboolean bucket_sort_step(gpointer data);
 gboolean shell_sort_step(gpointer data);
 
+void reset_merge_sort();
+void reset_quick_sort();
+void reset_heap_sort();
+void reset_counting_sort();
+void reset_radix_sort();
+void reset_shell_sort();
+void reset_bucket_sort();
 void reset_sort();
 
 /*

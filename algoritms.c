@@ -203,6 +203,7 @@ void reset_merge_sort() {
     gtk_widget_queue_draw(drawing_area);
 }
 
+// TODO: FIX QUICK SORT
 static int left = 0, right = MAX_ARRAY_SIZE - 1;
 static int pivot_index = -1;
 static int partition_index = -1;
@@ -270,32 +271,195 @@ void reset_quick_sort() {
     gtk_widget_queue_draw(drawing_area);
 }
 
+static int heap_size = 0;
+
 gboolean heap_sort_step(gpointer data) {
-    return TRUE;
+    if (heap_size == 0) heap_size = array_size;
 
+    if (stop_requested || heap_size <= 1) {
+        for (int k = 0; k < array_size; ++k)
+            sorted_flags[k] = true;
+
+        heap_size = 0;
+        gtk_widget_queue_draw(drawing_area);
+        show_finished_message();
+        return FALSE;
+    }
+
+    // Swap root of the heap with the last element
+    int temp = array[0];
+    array[0] = array[heap_size - 1];
+    array[heap_size - 1] = temp;
+
+    sorted_flags[heap_size - 1] = true;
+    heap_size--;  // Reduce heap size
+    gtk_widget_queue_draw(drawing_area);
+
+    return TRUE;
 }
 
-gboolean couting_sort_step(gpointer data) {
-    return TRUE;
-
+void reset_heap_sort() {
+    heap_size = 0;
+    for (int k = 0; k < array_size; ++k)
+        sorted_flags[k] = false;
+    gtk_widget_queue_draw(drawing_area);
 }
+
+static int count[MAX_ARRAY_SIZE];
+static int c_index = 0;
+
+gboolean counting_sort_step(gpointer data) {
+    if (c_index == 0) {
+        memset(count, 0, sizeof(count));
+        for (int i = 0; i < array_size; i++)
+            count[array[i]]++;
+    }
+
+    if (stop_requested || c_index >= array_size) {
+        for (int k = 0; k < array_size; ++k)
+            sorted_flags[k] = true;
+        gtk_widget_queue_draw(drawing_area);
+        show_finished_message();
+        return FALSE;
+    }
+
+    if (count[c_index] > 0) {
+        array[c_index] = c_index;
+        count[c_index]--;
+        sorted_flags[c_index] = true;
+    }
+
+    c_index++;
+    gtk_widget_queue_draw(drawing_area);
+    return TRUE;
+}
+
+void reset_counting_sort() {
+    c_index = 0;
+    memset(count, 0, sizeof(count));
+    for (int k = 0; k < array_size; ++k)
+        sorted_flags[k] = false;
+    gtk_widget_queue_draw(drawing_area);
+}
+
+static int exp = 1;
 
 gboolean radix_sort_step(gpointer data) {
-    return TRUE;
+    if (stop_requested || exp > 1000) {  // Arbitrary limit for digits
+        for (int k = 0; k < array_size; ++k)
+            sorted_flags[k] = true;
+        reset_radix_sort();
+        gtk_widget_queue_draw(drawing_area);
+        show_finished_message();
+        return FALSE;
+    }
 
+    int output[array_size], count[10] = {0};
+
+    for (int i = 0; i < array_size; i++)
+        count[(array[i] / exp) % 10]++;
+
+    for (int i = 1; i < 10; i++)
+        count[i] += count[i - 1];
+
+    for (int i = array_size - 1; i >= 0; i--) {
+        output[count[(array[i] / exp) % 10] - 1] = array[i];
+        count[(array[i] / exp) % 10]--;
+    }
+
+    for (int i = 0; i < array_size; i++)
+        array[i] = output[i];
+
+    exp *= 10;
+    gtk_widget_queue_draw(drawing_area);
+    return TRUE;
 }
+
+void reset_radix_sort() {
+    exp = 1;
+    for (int k = 0; k < array_size; ++k)
+        sorted_flags[k] = false;
+    gtk_widget_queue_draw(drawing_area);
+}
+
+static int bucket_index = 0;
 
 gboolean bucket_sort_step(gpointer data) {
-    return TRUE;
+    if (stop_requested || bucket_index >= BUCKETS) {
+        for (int k = 0; k < array_size; ++k)
+            sorted_flags[k] = true;
+        reset_bucket_sort();
+        gtk_widget_queue_draw(drawing_area);
+        show_finished_message();
+        return FALSE;
+    }
 
+    for (int i = 0; i < array_size; i++) {
+        if ((array[i] / BUCKETS) == bucket_index) {
+            sorted_flags[i] = true;
+        }
+    }
+
+    bucket_index++;
+    gtk_widget_queue_draw(drawing_area);
+    return TRUE;
 }
 
-gboolean shell_sort_step(gpointer data) {
-    return TRUE;
+void reset_bucket_sort() {
+    bucket_index = 0;
+    for (int k = 0; k < array_size; ++k)
+        sorted_flags[k] = false;
+    gtk_widget_queue_draw(drawing_area);
+}
 
+static int gap = 0, i = 0, j = 0;
+
+gboolean shell_sort_step(gpointer data) {
+    if (gap == 0) gap = array_size / 2;  
+
+    if (stop_requested || gap < 1) {
+        for (int k = 0; k < array_size; ++k)
+            sorted_flags[k] = true;
+        reset_shell_sort();
+        gtk_widget_queue_draw(drawing_area);
+        show_finished_message();
+        return FALSE;
+    }
+
+    if (i + gap < array_size) {
+        current_index = i;
+        compare_index = i + gap;
+
+        if (array[i] > array[i + gap]) {
+            int temp = array[i];
+            array[i] = array[i + gap];
+            array[i + gap] = temp;
+        }
+
+        i++;
+        gtk_widget_queue_draw(drawing_area);
+        return TRUE;
+    } else {
+        gap /= 2;
+        i = 0;
+        return TRUE;
+    }
+}
+
+void reset_shell_sort() {
+    gap = 0;
+    i = j = 0;
+    for (int k = 0; k < array_size; ++k)
+        sorted_flags[k] = false;
+    gtk_widget_queue_draw(drawing_area);
 }
 
 void reset_sort() {
     reset_merge_sort();
     reset_quick_sort();
+    reset_heap_sort();
+    reset_counting_sort();
+    reset_radix_sort();
+    reset_bucket_sort();
+    reset_shell_sort();
 }
