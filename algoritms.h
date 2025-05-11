@@ -1,7 +1,11 @@
 #ifndef ALGORITMS_H
 #define ALGORITMS_H
 
-#define BUCKETS 100
+#define VALUE_RANGE (MAX_VALUE - MIN_VALUE + 1)
+#define OFFSET (-MIN_VALUE)
+#define MAX_STACK_SIZE 64
+
+#define BUCKETS 10
 
 gboolean bubble_sort_step(gpointer data); 
 gboolean selection_sort_step(gpointer data);
@@ -14,6 +18,9 @@ gboolean radix_sort_step(gpointer data);
 gboolean bucket_sort_step(gpointer data);
 gboolean shell_sort_step(gpointer data);
 
+void push_quick(int left, int right);
+gboolean pop_quick(int *left, int *right);
+gboolean heapify_single_step(int n);
 void reset_merge_sort();
 void reset_quick_sort();
 void reset_heap_sort();
@@ -22,6 +29,10 @@ void reset_radix_sort();
 void reset_shell_sort();
 void reset_bucket_sort();
 void reset_sort();
+
+void reset_bucket_sort();
+int int_compare(const void* a, const void* b);
+void initialize_buckets();
 
 /*
 1.2.1 Bubble Sort
