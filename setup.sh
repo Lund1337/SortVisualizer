@@ -31,7 +31,7 @@ case "${unameOut}" in
         fi
 
         echo "Installing GTK3 and pkg-config wrapper..."
-        brew install gtk+3 pkg-config
+        brew install gtk+3 pkg-config gtk-mac-integration
         ;;
     *)
         echo "Unsupported OS: ${unameOut}"
