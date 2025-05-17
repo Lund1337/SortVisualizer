@@ -33,7 +33,7 @@ void draw_array(GtkWidget *widget, cairo_t *cr) {
     gtk_widget_get_allocation(widget, &allocation);
     int width = allocation.width;
     int height = allocation.height;
-    int bar_width = width / array_size;
+    int bar_width = MAX(1, width / array_size);
 
     // Linie la 0
     double zero_level = (0 - MIN_VALUE) / (double)(MAX_VALUE - MIN_VALUE);
@@ -60,19 +60,22 @@ void draw_array(GtkWidget *widget, cairo_t *cr) {
             cairo_set_source_rgb(cr, COLOR_DEFAULT.r, COLOR_DEFAULT.g, COLOR_DEFAULT.b); // Blue
         }
 
-        cairo_rectangle(cr, x, height - bar_height, bar_width - 1, bar_height);
+        cairo_rectangle(cr, x, height - bar_height, bar_width - 0.5, bar_height);
         cairo_fill(cr);
 
         // Draw value above bar
-        cairo_set_source_rgb(cr, 0.5, 0.5, 0.5); // gray
-        cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
-        cairo_set_font_size(cr, 10);
-        char val[16];
-        snprintf(val, sizeof(val), "%d", array[i]);
-        cairo_move_to(cr, x + 2, height - bar_height - 4);
-        cairo_show_text(cr, val);
+        if (bar_width >= 3) {
+            cairo_set_source_rgb(cr, 0.5, 0.5, 0.5); // gray
+            cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
+            cairo_set_font_size(cr, 8);
+            char val[16];
+            snprintf(val, sizeof(val), "%d", array[i]);
+            cairo_move_to(cr, x + 2, height - bar_height - 4);
+            cairo_show_text(cr, val);
+        }
     }
 }
+
 void reset_sort_visual_state() {
     current_index = -1;
     compare_index = -1;
@@ -121,6 +124,10 @@ sort_step_func get_sort_step_function(const gchar *algorithm_name) {
         return bucket_sort_step;
     } else if (g_strcmp0(algorithm_name, "Shell Sort") == 0) {
         return shell_sort_step;
+    } else if (g_strcmp0(algorithm_name, "Tim Sort") == 0) {
+        return tim_sort_step;
+    } else if (g_strcmp0(algorithm_name, "Intro Sort") == 0) {
+        return intro_sort_step;
     } else {
         g_warning("Unknown sorting algorithm: %s", algorithm_name);
         return NULL;

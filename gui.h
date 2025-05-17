@@ -3,7 +3,7 @@
 
 #include "helper.h"
 
-#define DEFAULT_WIDTH 1100
+#define DEFAULT_WIDTH 1200
 #define DEFAULT_HEIGHT 800
 
 typedef enum {

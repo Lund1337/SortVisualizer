@@ -597,10 +597,10 @@ ______          _ _        _____            _
 \_| \_\__,_|\__,_|_/_/\_\ \____/ \___/|_|   \__|
 */
 
-static int exp = 1;
+static int radix_exp = 1;
 
 gboolean radix_sort_step(gpointer data) {
-    if (stop_requested || exp > 1000000000) {
+    if (stop_requested || radix_exp > 1000000000) {
         for (int k = 0; k < array_size; ++k)
             sorted_flags[k] = true;
         gtk_widget_queue_draw(drawing_area);
@@ -618,7 +618,7 @@ gboolean radix_sort_step(gpointer data) {
 
     // 1. Count occurrences of digits (shift negative digits to positive indices in count)
     for (int i = 0; i < array_size; i++) {
-        int digit = (array[i] / exp) % 10;
+        int digit = (array[i] / radix_exp) % 10;
         count[digit + 10]++; // Shift by 10 to handle negative digits
     }
 
@@ -628,7 +628,7 @@ gboolean radix_sort_step(gpointer data) {
 
     // 3. Build the output array (stable sorting)
     for (int i = array_size - 1; i >= 0; i--) {
-        int digit = (array[i] / exp) % 10;
+        int digit = (array[i] / radix_exp) % 10;
         output[count[digit + 10] - 1] = array[i]; // Shift by 10 again
         count[digit + 10]--;
     }
@@ -637,8 +637,8 @@ gboolean radix_sort_step(gpointer data) {
     for (int i = 0; i < array_size; i++)
         array[i] = output[i];
 
-    // 5. Increment the exponent
-    exp *= 10;
+    // 5. Increment the radix_exponent
+    radix_exp *= 10;
 
     // 6. Trigger redraw and free memory
     gtk_widget_queue_draw(drawing_area);
@@ -647,7 +647,7 @@ gboolean radix_sort_step(gpointer data) {
 }
 
 void reset_radix_sort() {
-    exp = 1;
+    radix_exp = 1;
     for (int k = 0; k < array_size; ++k)
         sorted_flags[k] = false;
     gtk_widget_queue_draw(drawing_area);
@@ -818,6 +818,554 @@ void reset_shell_sort() {
     gtk_widget_queue_draw(drawing_area);
 }
 
+/*
+ _____ _             _____            _   
+|_   _(_)           /  ___|          | |  
+  | |  _ _ __ ___   \ `--.  ___  _ __| |_ 
+  | | | | '_ ` _ \   `--. \/ _ \| '__| __|
+  | | | | | | | | | /\__/ / (_) | |  | |_ 
+  \_/ |_|_| |_| |_| \____/ \___/|_|   \__|
+*/
+
+static int min_run = 0;
+
+// Variables for insertion sort state
+static gboolean insertion_phase = FALSE;
+static int current_run_start = 0;
+static int insert_i = 0;
+static int insert_j = 0;
+static int insert_key = 0;
+static gboolean insert_in_progress = FALSE;
+
+// Variables for merge phase state
+static int current_merge_size = 0;
+static int current_merge_left = 0;
+static int current_merge_mid = 0;
+static int current_merge_right = 0;
+static int temp_left_ptr = 0;
+static int temp_right_ptr = 0;
+static int array_write_ptr = 0;
+static gboolean merging_in_progress = FALSE;
+
+static int segment_start_left = 0;
+
+static int *temp_array = NULL;
+
+gboolean tim_sort_step(gpointer data) {
+    if (stop_requested) {
+        reset_tim_sort();
+        gtk_widget_queue_draw(drawing_area);
+        return FALSE;
+    }
+
+    // Initialization
+    if (min_run == 0) {
+        int n = array_size;
+        int r = 0;
+        while (n >= 64) {
+            r |= (n & 1);
+            n >>= 1;
+        }
+        min_run = n + r;
+        if (min_run < 1) min_run = 1;
+
+        if (temp_array) free(temp_array);
+        temp_array = (int*)malloc(array_size * sizeof(int));
+        if (!temp_array) {
+            fprintf(stderr, "Failed to allocate temporary array for Timsort.\n");
+            reset_tim_sort();
+            return FALSE;
+        }
+
+        insertion_phase = TRUE;
+        current_run_start = 0;
+        insert_in_progress = FALSE;
+
+        current_merge_size = 0;
+        segment_start_left = 0;
+        merging_in_progress = FALSE;
+
+        current_index = -1;
+        compare_index = -1;
+
+        if (sorted_flags && array_size > 0) {
+            for (int k = 0; k < array_size; ++k) {
+                sorted_flags[k] = false;
+            }
+        }
+
+        gtk_widget_queue_draw(drawing_area);
+        return TRUE;
+    }
+
+    // Insertion phase
+    if (insertion_phase) {
+        if (current_run_start >= array_size) {
+            insertion_phase = FALSE;
+            current_merge_size = min_run;
+            segment_start_left = 0;
+            merging_in_progress = FALSE;
+
+            insert_i = 0;
+            insert_j = 0;
+            insert_key = 0;
+            insert_in_progress = FALSE;
+            current_run_start = 0;
+
+            gtk_widget_queue_draw(drawing_area);
+            return TRUE;
+        }
+
+        int run_end = (current_run_start + min_run < array_size) ? current_run_start + min_run : array_size;
+
+        if (!insert_in_progress) {
+            insert_i = current_run_start + 1;
+            while (insert_i < run_end && array[insert_i - 1] <= array[insert_i]) {
+                insert_i++;
+            }
+
+            if (insert_i >= run_end) {
+                current_run_start = run_end;
+                gtk_widget_queue_draw(drawing_area);
+                return TRUE;
+            }
+
+            insert_key = array[insert_i]; 
+            insert_j = insert_i - 1;
+            insert_in_progress = TRUE;
+
+            current_index = insert_i;
+            compare_index = insert_j;
+            gtk_widget_queue_draw(drawing_area);
+            return TRUE;
+        }
+
+        if (insert_j >= current_run_start && array[insert_j] > insert_key) {
+            array[insert_j + 1] = array[insert_j];
+            insert_j--;
+
+            current_index = insert_j + 1;
+            compare_index = insert_j;
+            gtk_widget_queue_draw(drawing_area);
+            return TRUE;
+        } else {
+            array[insert_j + 1] = insert_key;
+
+            current_index = insert_j + 1;
+            compare_index = -1;
+
+            insert_in_progress = FALSE;
+
+            gtk_widget_queue_draw(drawing_area);
+            return TRUE;
+        }
+    }
+
+    // Merge phase
+    if (current_merge_size >= array_size) {
+        for (int k = 0; k < array_size; ++k) {
+            sorted_flags[k] = true;
+        }
+        gtk_widget_queue_draw(drawing_area);
+        show_finished_message();
+
+        if (temp_array) {
+            free(temp_array);
+            temp_array = NULL;
+        }
+
+        return FALSE;
+    }
+
+    if (!merging_in_progress) {
+        if (segment_start_left >= array_size) {
+            current_merge_size *= 2;
+            segment_start_left = 0;
+            gtk_widget_queue_draw(drawing_area);
+            return TRUE;
+        }
+
+        int mid_point = segment_start_left + current_merge_size;
+        int end_right = segment_start_left + 2 * current_merge_size;
+        if (end_right > array_size) end_right = array_size;
+        if (mid_point < end_right) {
+            current_merge_left = segment_start_left;
+            current_merge_mid = mid_point;
+            current_merge_right = end_right;
+
+            merging_in_progress = TRUE;
+
+            int segment_length = current_merge_right - current_merge_left;
+            for (int i = 0; i < segment_length; i++) {
+                temp_array[i] = array[current_merge_left + i];
+            }
+
+            // *** FIX: Initialize the left pointer for merging ***
+            temp_left_ptr = 0;
+            temp_right_ptr = current_merge_mid - current_merge_left;
+            array_write_ptr = current_merge_left;
+
+            segment_start_left = end_right;
+
+            gtk_widget_queue_draw(drawing_area);
+            return TRUE;
+        } else {
+            segment_start_left = end_right;
+            gtk_widget_queue_draw(drawing_area);
+            return TRUE;
+        }
+    } else {
+        int mid_boundary_in_temp = current_merge_mid - current_merge_left;
+        int right_boundary_in_temp = current_merge_right - current_merge_left;
+
+        if (temp_left_ptr < mid_boundary_in_temp &&
+            (temp_right_ptr >= right_boundary_in_temp || temp_array[temp_left_ptr] <= temp_array[temp_right_ptr])) {
+            array[array_write_ptr] = temp_array[temp_left_ptr];
+            temp_left_ptr++;
+        } else if (temp_right_ptr < right_boundary_in_temp) {
+            array[array_write_ptr] = temp_array[temp_right_ptr];
+            temp_right_ptr++;
+        }
+
+        current_index = array_write_ptr;
+        compare_index = -1;
+
+        array_write_ptr++;
+
+        if (array_write_ptr >= current_merge_right) {
+            merging_in_progress = FALSE;
+        }
+
+        gtk_widget_queue_draw(drawing_area);
+        return TRUE;
+    }
+}
+
+void reset_tim_sort() {
+    min_run = 0;
+
+    insertion_phase = FALSE;
+    current_run_start = 0;
+    insert_i = 0;
+    insert_j = 0;
+    insert_key = 0;
+    insert_in_progress = FALSE;
+
+    current_merge_size = 0;
+    current_merge_left = 0;
+    current_merge_mid = 0;
+    current_merge_right = 0;
+    temp_left_ptr = 0;
+    temp_right_ptr = 0;
+    array_write_ptr = 0;
+    merging_in_progress = FALSE;
+    segment_start_left = 0;
+
+    if (temp_array) {
+        free(temp_array);
+        temp_array = NULL;
+    }
+
+    current_index = -1;
+    compare_index = -1;
+
+    if (sorted_flags && array_size > 0) {
+        for (int k = 0; k < array_size; ++k) {
+            sorted_flags[k] = false;
+        }
+    }
+    gtk_widget_queue_draw(drawing_area);
+}
+
+/*
+ _____      _               _____            _   
+|_   _|    | |             /  ___|          | |  
+  | | _ __ | |_ _ __ ___   \ `--.  ___  _ __| |_ 
+  | || '_ \| __| '__/ _ \   `--. \/ _ \| '__| __|
+ _| || | | | |_| | | (_) | /\__/ / (_) | |  | |_ 
+ \___/_| |_|\__|_|  \___/  \____/ \___/|_|   \__|
+*/
+
+static int depth_limit;
+static int pivot_index = -1;
+static int partition_left = 0, partition_right = 0;
+static int heap_start = 0, heap_end = 0;
+static gboolean quick_sort_phase = FALSE;
+static gboolean heap_sort_phase = FALSE;
+static gboolean insertion_sort_phase = FALSE;
+static gboolean partitioning = FALSE;
+static gboolean heapifying = FALSE;
+static int* stack = NULL;
+static int stack_top = -1;
+static int stack_size = 0;
+
+static void push_range(int left, int right) {
+    if (stack_top + 2 >= stack_size) {
+        stack_size = (stack_size == 0) ? 32 : stack_size * 2;
+        stack = realloc(stack, stack_size * sizeof(int));
+        if (!stack) return;
+    }
+    stack[++stack_top] = left;
+    stack[++stack_top] = right;
+}
+
+static gboolean pop_range(int* left, int* right) {
+    if (stack_top < 1) return FALSE;
+    *right = stack[stack_top--];
+    *left = stack[stack_top--];
+    return TRUE;
+}
+
+gboolean intro_sort_step(gpointer data) {
+    if (stop_requested) {
+        reset_intro_sort();
+        gtk_widget_queue_draw(drawing_area);
+        return FALSE;
+    }
+
+    // Initialization phase
+    if (depth_limit == 0) {
+        depth_limit = 2 * log2(array_size);
+        if (stack) free(stack);
+        stack = NULL;
+        stack_top = -1;
+        stack_size = 0;
+        
+        push_range(0, array_size - 1);
+        quick_sort_phase = TRUE;
+        return TRUE;
+    }
+
+    // Quick sort phase
+    if (quick_sort_phase) {
+        if (!partitioning) {
+            if (!pop_range(&partition_left, &partition_right)) {
+                // No more ranges from quicksort; perform final insertion sort pass
+                partition_left = 0;
+                partition_right = array_size - 1;
+                quick_sort_phase = FALSE;
+                insertion_sort_phase = TRUE;
+                return TRUE;
+            }
+            
+            if (partition_right - partition_left + 1 <= 16) {
+                // Range is small, push into insertion sort phase
+                push_range(partition_left, partition_right);
+                quick_sort_phase = FALSE;
+                insertion_sort_phase = TRUE;
+                return TRUE;
+            }
+            
+            if (depth_limit <= 0) {
+                // Switch to heap sort if recursion depth is exceeded
+                heap_sort_phase = TRUE;
+                quick_sort_phase = FALSE;
+                heap_start = 0;
+                heap_end = partition_right - partition_left;
+                heapifying = TRUE;
+                return TRUE;
+            }
+            
+            // Choose pivot (median of three)
+            int mid = partition_left + (partition_right - partition_left) / 2;
+            if (array[partition_left] > array[mid]) {
+                int temp = array[partition_left];
+                array[partition_left] = array[mid];
+                array[mid] = temp;
+            }
+            if (array[partition_left] > array[partition_right]) {
+                int temp = array[partition_left];
+                array[partition_left] = array[partition_right];
+                array[partition_right] = temp;
+            }
+            if (array[mid] > array[partition_right]) {
+                int temp = array[mid];
+                array[mid] = array[partition_right];
+                array[partition_right] = temp;
+            }
+            
+            // Place pivot at partition_right - 1
+            int temp = array[mid];
+            array[mid] = array[partition_right - 1];
+            array[partition_right - 1] = temp;
+            
+            pivot_index = partition_right - 1;
+            partitioning = TRUE;
+            return TRUE;
+        } else {
+            // Partitioning step:
+            int i = partition_left;
+            int j = partition_right - 1;
+            while (1) {
+                while (array[++i] < array[pivot_index]);
+                while (array[--j] > array[pivot_index]);
+                
+                if (i < j) {
+                    // Swap elements
+                    int temp = array[i];
+                    array[i] = array[j];
+                    array[j] = temp;
+                    
+                    // Update visualization
+                    current_index = i;
+                    compare_index = j;
+                    gtk_widget_queue_draw(drawing_area);
+                } else {
+                    break;
+                }
+            }
+            
+            // Swap pivot into place
+            int temp = array[i];
+            array[i] = array[pivot_index];
+            array[pivot_index] = temp;
+            
+            // Update visualization
+            current_index = i;
+            compare_index = pivot_index;
+            gtk_widget_queue_draw(drawing_area);
+
+            
+            // Push the larger partition first
+            if (i - partition_left > partition_right - i) {
+                push_range(partition_left, i - 1);
+                push_range(i + 1, partition_right);
+            } else {
+                push_range(i + 1, partition_right);
+                push_range(partition_left, i - 1);
+            }
+            
+            depth_limit--;
+            partitioning = FALSE;
+            return TRUE;
+        }
+    }
+
+    // Heap sort phase
+    if (heap_sort_phase) {
+        if (heapifying) {
+            int largest = heap_start;
+            int left_child = 2 * heap_start + 1;
+            int right_child = 2 * heap_start + 2;
+            
+            if (left_child <= heap_end && array[partition_left + left_child] > array[partition_left + largest]) {
+                largest = left_child;
+            }
+            if (right_child <= heap_end && array[partition_left + right_child] > array[partition_left + largest]) {
+                largest = right_child;
+            }
+            if (largest != heap_start) {
+                // Swap elements
+                int temp = array[partition_left + heap_start];
+                array[partition_left + heap_start] = array[partition_left + largest];
+                array[partition_left + largest] = temp;
+                
+                current_index = partition_left + heap_start;
+                compare_index = partition_left + largest;
+                gtk_widget_queue_draw(drawing_area);
+                
+                heap_start = largest;
+                return TRUE;
+            } else {
+                heapifying = FALSE;
+                return TRUE;
+            }
+        } else {
+            if (heap_end > 0) {
+                // Swap root with last element of heap
+                int temp = array[partition_left];
+                array[partition_left] = array[partition_left + heap_end];
+                array[partition_left + heap_end] = temp;
+                
+                current_index = partition_left;
+                compare_index = partition_left + heap_end;
+                gtk_widget_queue_draw(drawing_area);
+                
+                heap_end--;
+                heap_start = 0;
+                heapifying = TRUE;
+                return TRUE;
+            } else {
+                // Heap sort complete for this range; move on to final insertion sort pass
+                heap_sort_phase = FALSE;
+                insertion_sort_phase = TRUE;
+                return TRUE;
+            }
+        }
+    }
+
+    // Insertion phase
+    if (insertion_sort_phase) {
+        if (!pop_range(&partition_left, &partition_right)) {
+            // Sorting complete
+            for (int k = 0; k < array_size; ++k)
+                sorted_flags[k] = true;
+            gtk_widget_queue_draw(drawing_area);
+            show_finished_message();
+            return FALSE;
+        }
+        
+        if (partition_right - partition_left + 1 <= 16) {
+            // Perform insertion sort on small range
+            for (int i = partition_left + 1; i <= partition_right; i++) {
+                int key = array[i];
+                int j = i - 1;
+                
+                while (j >= partition_left && array[j] > key) {
+                    array[j + 1] = array[j];
+                    j--;
+                    
+                    // Update visualization
+                    current_index = j + 1;
+                    compare_index = j;
+                    gtk_widget_queue_draw(drawing_area);
+                }
+                array[j + 1] = key;
+            }
+            return TRUE;
+        } else {
+            for (int i = partition_left + 1; i <= partition_right; i++) {
+                int key = array[i];
+                int j = i - 1;
+                while (j >= partition_left && array[j] > key) {
+                    array[j + 1] = array[j];
+                    j--;
+                    current_index = j + 1;
+                    compare_index = j;
+                    gtk_widget_queue_draw(drawing_area);
+                }
+                array[j + 1] = key;
+            }
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
+void reset_intro_sort() {
+    depth_limit = 0;
+    pivot_index = -1;
+    partition_left = partition_right = 0;
+    heap_start = heap_end = 0;
+    quick_sort_phase = FALSE;
+    heap_sort_phase = FALSE;
+    insertion_sort_phase = FALSE;
+    partitioning = FALSE;
+    heapifying = FALSE;
+    
+    if (stack) {
+        free(stack);
+        stack = NULL;
+    }
+    stack_top = -1;
+    stack_size = 0;
+    
+    current_index = compare_index = -1;
+    for (int k = 0; k < array_size; ++k)
+        sorted_flags[k] = false;
+    gtk_widget_queue_draw(drawing_area);
+}
+
 /* Helper Funt to reset everything */
 void reset_sort() {
     reset_merge_sort();
@@ -827,4 +1375,6 @@ void reset_sort() {
     reset_radix_sort();
     reset_bucket_sort();
     reset_shell_sort();
+    reset_tim_sort();
+    reset_intro_sort();
 }

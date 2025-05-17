@@ -17,7 +17,7 @@ GtkWidget *start_button, *stop_button, *new_array_button;
 GtkWidget *algorithm_select;
 GtkWidget *message_label, *overlay;
 GtkWidget *theme_selector;
-const char *current_algorithm = "Bubble Sort";
+const char *current_algorithm = DEFAULT_SORT_ALGO;
 
 int main(int argc, char *argv[]) {
     srand(time(NULL));
@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
     GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
     gtk_container_add(GTK_CONTAINER(window), vbox);
 
-    // ⚠️ MUTAT SUS — creați înainte de a fi adăugat în overlay
+    // MUTAT SUS — creați înainte de a fi adăugat în overlay
     drawing_area = gtk_drawing_area_new();
     gtk_widget_set_vexpand(drawing_area, TRUE);
     g_signal_connect(drawing_area, "draw", G_CALLBACK(draw_array), NULL);
@@ -96,6 +96,8 @@ int main(int argc, char *argv[]) {
     gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(algorithm_select), "Radix Sort");
     gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(algorithm_select), "Bucket Sort");
     gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(algorithm_select), "Shell Sort");
+    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(algorithm_select), "Tim Sort");
+    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(algorithm_select), "Intro Sort");
     
     gtk_combo_box_set_active(GTK_COMBO_BOX(algorithm_select), 0);
     gtk_box_pack_start(GTK_BOX(controls), algorithm_select, TRUE, TRUE, 2);
@@ -167,7 +169,7 @@ void generate_random_array() {
         free(sorted_flags);
     }
 
-    array_size = 50 + rand() % 51;
+    array_size = MIN_ARRAY_SIZE + rand() % (MAX_ARRAY_SIZE - MIN_ARRAY_SIZE) + 1;
 
     for (int i = 0; i < array_size; i++) {
         array[i] = MIN_VALUE + rand() % (MAX_VALUE - MIN_VALUE + 1);
@@ -179,7 +181,6 @@ void generate_random_array() {
         exit(EXIT_FAILURE);
     }
 }
-
 
 void reset_sort_state() {
     reset_sort_visual_state();

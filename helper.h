@@ -6,6 +6,7 @@
 #include <time.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <math.h>
 #include "algoritms.h"
 #include "gui.h"
 
@@ -13,10 +14,12 @@
 #include <gtkmacintegration/gtkosxapplication.h>
 #endif
 
-#define MAX_ARRAY_SIZE 100
-#define MIN_VALUE -100
-#define MAX_VALUE 100
+#define MAX_ARRAY_SIZE 200
+#define MIN_ARRAY_SIZE ((MAX_ARRAY_SIZE / 2) + (MAX_ARRAY_SIZE / 4))
+#define MIN_VALUE -MAX_ARRAY_SIZE
+#define MAX_VALUE MAX_ARRAY_SIZE
 #define DEFAULT_SORT_DELAY 1
+#define DEFAULT_SORT_ALGO "Bubble Sort"
 
 // Shared variables
 extern GtkWidget *drawing_area;

@@ -39,6 +39,13 @@ void reset_bucket_sort();
 int int_compare(const void* a, const void* b);
 void initialize_buckets();
 
+void reset_tim_sort();
+gboolean tim_sort_step(gpointer data);
+gboolean intro_sort_step(gpointer data);
+void reset_intro_sort();
+
+#endif
+
 /*
 1.2.1 Bubble Sort
 1.2.2 Insertion Sort
@@ -50,7 +57,6 @@ void initialize_buckets();
 1.2.8 Radix Sort
 1.2.9 Bucket Sort
 1.2.10 Shell Sort
+1.2.11 Tim Sort
+1.2.12 Intro Sort
 */
-
-
-#endif
