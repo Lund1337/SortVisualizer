@@ -98,12 +98,17 @@ int main(int argc, char *argv[]) {
     gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(algorithm_select), "Shell Sort");
     gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(algorithm_select), "Tim Sort");
     gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(algorithm_select), "Intro Sort");
+    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(algorithm_select), "Cycle Sort");
+    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(algorithm_select), "Cocktail Shaker Sort");
+    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(algorithm_select), "Gnome Sort");
+    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(algorithm_select), "Comb Sort");
+    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(algorithm_select), "Bogo Sort");
     
     gtk_combo_box_set_active(GTK_COMBO_BOX(algorithm_select), 0);
     gtk_box_pack_start(GTK_BOX(controls), algorithm_select, TRUE, TRUE, 2);
 
     // Slider pentru viteza de sortare
-    GtkWidget *speed_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 1, 300, 5);
+    GtkWidget *speed_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 1, 1000, 5);
     gtk_range_set_value(GTK_RANGE(speed_scale), sort_delay);
     gtk_scale_set_draw_value(GTK_SCALE(speed_scale), TRUE);
     gtk_scale_set_value_pos(GTK_SCALE(speed_scale), GTK_POS_TOP);

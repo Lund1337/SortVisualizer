@@ -853,7 +853,6 @@ static int *temp_array = NULL;
 
 gboolean tim_sort_step(gpointer data) {
     if (stop_requested) {
-        reset_tim_sort();
         gtk_widget_queue_draw(drawing_area);
         return FALSE;
     }
@@ -1118,7 +1117,6 @@ static gboolean pop_range(int* left, int* right) {
 
 gboolean intro_sort_step(gpointer data) {
     if (stop_requested) {
-        reset_intro_sort();
         gtk_widget_queue_draw(drawing_area);
         return FALSE;
     }
@@ -1366,6 +1364,492 @@ void reset_intro_sort() {
     gtk_widget_queue_draw(drawing_area);
 }
 
+/*
+ _____            _        _____            _   
+/  __ \          | |      /  ___|          | |  
+| /  \/_   _  ___| | ___  \ `--.  ___  _ __| |_ 
+| |   | | | |/ __| |/ _ \  `--. \/ _ \| '__| __|
+| \__/\ |_| | (__| |  __/ /\__/ / (_) | |  | |_ 
+ \____/\__, |\___|_|\___| \____/ \___/|_|   \__|
+        __/ |                                   
+       |___/                                    
+*/
+
+// Cycle Sort State Variables
+static int cycle_start = 0;
+static int cycle_position = 0;
+static int cycle_value = 0;
+static int cycle_writes = 0;
+static gboolean in_cycle = FALSE;
+
+gboolean cycle_sort_step(gpointer data) {
+    if (stop_requested) {
+        gtk_widget_queue_draw(drawing_area);
+        return FALSE;
+    }
+
+    if (!in_cycle) {
+        if (cycle_start >= array_size - 1) {
+            for (int k = 0; k < array_size; ++k)
+                sorted_flags[k] = true;
+            gtk_widget_queue_draw(drawing_area);
+            show_finished_message();
+            return FALSE;
+        }
+
+        cycle_value = array[cycle_start];
+        cycle_position = cycle_start;
+
+        for (int i = cycle_start + 1; i < array_size; i++) {
+            if (array[i] < cycle_value)
+                cycle_position++;
+        }
+
+        if (cycle_position == cycle_start) {
+            cycle_start++;
+            gtk_widget_queue_draw(drawing_area);
+            return TRUE;
+        }
+
+        while (cycle_position < array_size && array[cycle_position] == cycle_value) {
+            cycle_position++;
+        }
+
+        if (cycle_position >= array_size) {
+            cycle_start++;
+            current_index = compare_index = -1;
+            gtk_widget_queue_draw(drawing_area);
+            return TRUE;
+        }
+
+        in_cycle = TRUE;
+        cycle_writes = 0;
+
+        // Perform first swap
+        int temp = array[cycle_position];
+        array[cycle_position] = cycle_value;
+        cycle_value = temp;
+        cycle_writes++;
+
+        current_index = cycle_start;
+        compare_index = cycle_position;
+        gtk_widget_queue_draw(drawing_area);
+        return TRUE;
+    } else {
+        // Continue the cycle
+        cycle_position = cycle_start;
+
+        for (int i = cycle_start + 1; i < array_size; i++) {
+            if (array[i] < cycle_value)
+                cycle_position++;
+        }
+
+        while (cycle_position < array_size && array[cycle_position] == cycle_value) {
+            cycle_position++;
+        }
+
+        if (cycle_position >= array_size) {
+            in_cycle = FALSE;
+            cycle_start++;
+            current_index = compare_index = -1;
+            gtk_widget_queue_draw(drawing_area);
+            return TRUE;
+        }
+
+        // Perform swap
+        int temp = array[cycle_position];
+        array[cycle_position] = cycle_value;
+        cycle_value = temp;
+        cycle_writes++;
+
+        // If placed in correct spot, cycle is done
+        if (cycle_position == cycle_start) {
+            in_cycle = FALSE;
+            cycle_start++;
+        }
+
+        current_index = cycle_start;
+        compare_index = cycle_position;
+        gtk_widget_queue_draw(drawing_area);
+        return TRUE;
+    }
+
+    return TRUE;
+}
+
+// Reset Function
+void reset_cycle_sort() {
+    cycle_start = 0;
+    cycle_position = 0;
+    cycle_value = 0;
+    cycle_writes = 0;
+    in_cycle = FALSE;
+    current_index = compare_index = -1;
+    
+    for (int k = 0; k < array_size; ++k)
+        sorted_flags[k] = false;
+    
+    gtk_widget_queue_draw(drawing_area);
+}
+
+/*
+ _____            _    _        _ _   _____ _           _               _____            _   
+/  __ \          | |  | |      (_) | /  ___| |         | |             /  ___|          | |  
+| /  \/ ___   ___| | _| |_ __ _ _| | \ `--.| |__   __ _| | _____ _ __  \ `--.  ___  _ __| |_ 
+| |    / _ \ / __| |/ / __/ _` | | |  `--. \ '_ \ / _` | |/ / _ \ '__|  `--. \/ _ \| '__| __|
+| \__/\ (_) | (__|   <| || (_| | | | /\__/ / | | | (_| |   <  __/ |    /\__/ / (_) | |  | |_ 
+ \____/\___/ \___|_|\_\\__\__,_|_|_| \____/|_| |_|\__,_|_|\_\___|_|    \____/ \___/|_|   \__|
+*/
+
+// Cocktail Shaker Sort State Variables
+static int start = 0;
+static int end = 0;
+static int current = 0;
+static gboolean forward_pass = TRUE;
+static gboolean swapped_in_pass = FALSE;
+
+// Cocktail Shaker Step Function
+gboolean cocktail_shaker_sort_step(gpointer data) {
+    if (stop_requested) {
+        reset_cocktail_shaker_sort();
+        gtk_widget_queue_draw(drawing_area);
+        return FALSE;
+    }
+
+    // Sorting complete when no swaps occur in a full pass
+    if (start >= end) {
+        for (int k = 0; k < array_size; ++k)
+            sorted_flags[k] = true;
+        gtk_widget_queue_draw(drawing_area);
+        show_finished_message();
+        return FALSE;
+    }
+
+    if (forward_pass) {
+        // Forward pass (left to right)
+        if (current < end) {
+            if (array[current] > array[current + 1]) {
+                // Swap elements
+                int temp = array[current];
+                array[current] = array[current + 1];
+                array[current + 1] = temp;
+                swapped_in_pass = TRUE;
+
+                // Update visualization
+                current_index = current;
+                compare_index = current + 1;
+            } else {
+                // Just compare (no swap)
+                current_index = current;
+                compare_index = current + 1;
+            }
+            current++;
+        } else {
+            // End of forward pass
+            if (!swapped_in_pass) {
+                // Early exit if no swaps occurred
+                end = start;
+            } else {
+                end--;
+                current = end;
+                forward_pass = FALSE;
+                swapped_in_pass = FALSE;
+            }
+        }
+    } else {
+        // Backward pass (right to left)
+        if (current > start) {
+            if (array[current] < array[current - 1]) {
+                // Swap elements
+                int temp = array[current];
+                array[current] = array[current - 1];
+                array[current - 1] = temp;
+                swapped_in_pass = TRUE;
+
+                // Update visualization
+                current_index = current;
+                compare_index = current - 1;
+            } else {
+                // Just compare (no swap)
+                current_index = current;
+                compare_index = current - 1;
+            }
+            current--;
+        } else {
+            // End of backward pass
+            if (!swapped_in_pass) {
+                // Early exit if no swaps occurred
+                start = end;
+            } else {
+                start++;
+                current = start;
+                forward_pass = TRUE;
+                swapped_in_pass = FALSE;
+            }
+        }
+    }
+
+    gtk_widget_queue_draw(drawing_area);
+    return TRUE;
+}
+
+// Reset Function
+void reset_cocktail_shaker_sort() {
+    start = 0;
+    end = array_size - 1;
+    current = 0;
+    forward_pass = TRUE;
+    swapped_in_pass = FALSE;
+    current_index = compare_index = -1;
+
+    for (int k = 0; k < array_size; ++k)
+        sorted_flags[k] = false;
+
+    gtk_widget_queue_draw(drawing_area);
+}
+
+/*
+ _____                              _____            _   
+|  __ \                            /  ___|          | |  
+| |  \/_ __   ___  _ __ ___   ___  \ `--.  ___  _ __| |_ 
+| | __| '_ \ / _ \| '_ ` _ \ / _ \  `--. \/ _ \| '__| __|
+| |_\ \ | | | (_) | | | | | |  __/ /\__/ / (_) | |  | |_ 
+ \____/_| |_|\___/|_| |_| |_|\___| \____/ \___/|_|   \__|
+*/
+
+static int gnome_pos = 0;
+
+gboolean gnome_sort_step(gpointer data) {
+    if (stop_requested) {
+        gtk_widget_queue_draw(drawing_area);
+        return FALSE;
+    }
+
+    if (gnome_pos == 0) gnome_pos++;
+
+    // Sorting complete
+    if (gnome_pos >= array_size) {
+        for (int k = 0; k < array_size; ++k)
+            sorted_flags[k] = true;
+        gtk_widget_queue_draw(drawing_area);
+        show_finished_message();
+        return FALSE;
+    }
+
+    // Compare and swap if needed
+    current_index = gnome_pos - 1;
+    compare_index = gnome_pos;
+
+    if (array[gnome_pos - 1] > array[gnome_pos]) {
+        // Swap
+        int temp = array[gnome_pos];
+        array[gnome_pos] = array[gnome_pos - 1];
+        array[gnome_pos - 1] = temp;
+        
+        // Move backward
+        if (gnome_pos > 1) gnome_pos--;
+    } else {
+        // Move forward
+        gnome_pos++;
+    }
+
+    gtk_widget_queue_draw(drawing_area);
+    return TRUE;
+}
+
+void reset_gnome_sort() {
+    gnome_pos = 0;
+    current_index = compare_index = -1;
+    
+    for (int k = 0; k < array_size; ++k)
+        sorted_flags[k] = false;
+    
+    gtk_widget_queue_draw(drawing_area);
+}
+
+/*
+ _____                 _       _____            _   
+/  __ \               | |     /  ___|          | |  
+| /  \/ ___  _ __ ___ | |__   \ `--.  ___  _ __| |_ 
+| |    / _ \| '_ ` _ \| '_ \   `--. \/ _ \| '__| __|
+| \__/\ (_) | | | | | | |_) | /\__/ / (_) | |  | |_ 
+ \____/\___/|_| |_| |_|_.__/  \____/ \___/|_|   \__|
+*/
+
+static int comb_gap = 0;
+static int comb_i = 0;
+static gboolean comb_swapped = FALSE;
+static float shrink_factor = 1.3; // Optimal shrink factor
+
+gboolean comb_sort_step(gpointer data) {
+    if (stop_requested) {
+        gtk_widget_queue_draw(drawing_area);
+        return FALSE;
+    }
+
+    // Initialize gap if first time
+    if (comb_gap == 0) {
+        comb_gap = array_size;
+        comb_i = 0;
+        comb_swapped = FALSE;
+        return TRUE;
+    }
+
+    // If still within bounds for a single step in the current pass
+    if (comb_i + comb_gap < array_size) {
+        current_index = comb_i;
+        compare_index = comb_i + comb_gap;
+
+        if (array[comb_i] > array[comb_i + comb_gap]) {
+            int temp = array[comb_i];
+            array[comb_i] = array[comb_i + comb_gap];
+            array[comb_i + comb_gap] = temp;
+            comb_swapped = TRUE;
+        }
+
+        comb_i++;
+        gtk_widget_queue_draw(drawing_area);
+        return TRUE;  // Wait for next GTK timeout
+    }
+
+    // If pass is complete, prepare next gap & reset for next pass
+    if (comb_gap > 1 || comb_swapped) {
+        comb_gap = (int)(comb_gap / shrink_factor);
+        if (comb_gap < 1) comb_gap = 1;
+
+        comb_i = 0;
+        comb_swapped = FALSE;
+
+        return TRUE;
+    }
+
+    // Sorting is complete (gap == 1 && !comb_swapped)
+    for (int k = 0; k < array_size; ++k)
+        sorted_flags[k] = true;
+
+    current_index = compare_index = -1;
+    gtk_widget_queue_draw(drawing_area);
+    show_finished_message();
+    return FALSE;
+}
+
+void reset_comb_sort() {
+    comb_gap = 0;
+    comb_i = 0;
+    comb_swapped = FALSE;
+    current_index = compare_index = -1;
+
+    for (int k = 0; k < array_size; ++k)
+        sorted_flags[k] = false;
+
+    gtk_widget_queue_draw(drawing_area);
+}
+
+/*
+______                     _____            _   
+| ___ \                   /  ___|          | |  
+| |_/ / ___   __ _  ___   \ `--.  ___  _ __| |_ 
+| ___ \/ _ \ / _` |/ _ \   `--. \/ _ \| '__| __|
+| |_/ / (_) | (_| | (_) | /\__/ / (_) | |  | |_ 
+\____/ \___/ \__, |\___/  \____/ \___/|_|   \__|
+              __/ |                             
+             |___/                              
+*/
+
+static gboolean is_shuffling = FALSE;
+static int shuffle_pos = 0;
+static int shuffle_remaining = 0;
+static int *shuffle_copy = NULL;
+
+static gboolean is_sorted() {
+    for (int i = 0; i < array_size - 1; i++) {
+        if (array[i] > array[i + 1]) {
+            return FALSE;
+        }
+    }
+    return TRUE;
+}
+
+gboolean bogo_sort_step(gpointer data) {
+    if (stop_requested) {
+        reset_bogo_sort();
+        gtk_widget_queue_draw(drawing_area);
+        return FALSE;
+    }
+
+    // Check if sorted (miraculously)
+    if (is_sorted()) {
+        for (int k = 0; k < array_size; ++k)
+            sorted_flags[k] = true;
+        gtk_widget_queue_draw(drawing_area);
+        show_finished_message();
+        return FALSE;
+    }
+
+    // Visualize the shuffle step-by-step
+    if (!is_shuffling) {
+        // Begin new shuffle
+        is_shuffling = TRUE;
+        shuffle_pos = 0;
+        shuffle_remaining = array_size;
+        
+        // Create a copy for visualization
+        if (shuffle_copy) free(shuffle_copy);
+        shuffle_copy = (int*)malloc(array_size * sizeof(int));
+        memcpy(shuffle_copy, array, array_size * sizeof(int));
+        
+        return TRUE;
+    } else {
+        // Perform one step of Fisher-Yates shuffle
+        if (shuffle_remaining > 1) {
+            int j = rand() % shuffle_remaining;
+            
+            // Swap elements
+            int temp = array[shuffle_pos];
+            array[shuffle_pos] = array[j];
+            array[j] = temp;
+            
+            // Update visualization
+            current_index = shuffle_pos;
+            compare_index = j;
+            shuffle_pos++;
+            shuffle_remaining--;
+            
+            gtk_widget_queue_draw(drawing_area);
+            return TRUE;
+        } else {
+            // Shuffle complete
+            is_shuffling = FALSE;
+            free(shuffle_copy);
+            shuffle_copy = NULL;
+            
+            // Check if sorted in next step
+            current_index = -1;
+            compare_index = -1;
+            gtk_widget_queue_draw(drawing_area);
+            return TRUE;
+        }
+    }
+}
+
+void reset_bogo_sort() {
+    is_shuffling = FALSE;
+    shuffle_pos = 0;
+    shuffle_remaining = 0;
+    
+    if (shuffle_copy) {
+        free(shuffle_copy);
+        shuffle_copy = NULL;
+    }
+    
+    current_index = compare_index = -1;
+    
+    for (int k = 0; k < array_size; ++k)
+        sorted_flags[k] = false;
+    
+    gtk_widget_queue_draw(drawing_area);
+}
+
 /* Helper Funt to reset everything */
 void reset_sort() {
     reset_merge_sort();
@@ -1377,4 +1861,9 @@ void reset_sort() {
     reset_shell_sort();
     reset_tim_sort();
     reset_intro_sort();
+    reset_cycle_sort();
+    reset_cocktail_shaker_sort();
+    reset_gnome_sort();
+    reset_comb_sort();
+    reset_bogo_sort();
 }

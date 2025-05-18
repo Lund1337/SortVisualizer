@@ -128,6 +128,16 @@ sort_step_func get_sort_step_function(const gchar *algorithm_name) {
         return tim_sort_step;
     } else if (g_strcmp0(algorithm_name, "Intro Sort") == 0) {
         return intro_sort_step;
+    } else if (g_strcmp0(algorithm_name, "Cycle Sort") == 0) {
+        return cycle_sort_step;
+    } else if (g_strcmp0(algorithm_name, "Cocktail Shaker Sort") == 0) {
+        return cocktail_shaker_sort_step;
+    } else if (g_strcmp0(algorithm_name, "Gnome Sort") == 0) {
+        return gnome_sort_step;
+    } else if (g_strcmp0(algorithm_name, "Comb Sort") == 0) {
+        return comb_sort_step;
+    } else if (g_strcmp0(algorithm_name, "Bogo Sort") == 0) {
+        return bogo_sort_step;
     } else {
         g_warning("Unknown sorting algorithm: %s", algorithm_name);
         return NULL;

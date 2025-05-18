@@ -44,6 +44,17 @@ gboolean tim_sort_step(gpointer data);
 gboolean intro_sort_step(gpointer data);
 void reset_intro_sort();
 
+gboolean cycle_sort_step(gpointer data);
+void reset_cycle_sort();
+gboolean cocktail_shaker_sort_step(gpointer data);
+void reset_cocktail_shaker_sort();
+gboolean gnome_sort_step(gpointer data);
+void reset_gnome_sort();
+gboolean comb_sort_step(gpointer data);
+void reset_comb_sort();
+gboolean bogo_sort_step(gpointer data);
+void reset_bogo_sort();
+
 #endif
 
 /*
@@ -59,4 +70,9 @@ void reset_intro_sort();
 1.2.10 Shell Sort
 1.2.11 Tim Sort
 1.2.12 Intro Sort
+1.2.13 Cycle Sort
+1.2.14 Cocktail shaker Sort
+1.2.15 Gnome Sort
+1.2.16 Comb Sort
+1.2.17 Bogo Sort
 */
